@@ -1,0 +1,24 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Salidas generadas por el notebook
+metricas_comparativas.csv
+mapa_espacio_estados.png
+ruta_a_estrella.png
+ruta_hill_climbing.png
+comparacion_rutas.png
+analisis_optimos_locales.png
+escenario_trampa.png
+
+# Sistema
+.DS_Store

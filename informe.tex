@@ -1,0 +1,373 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,provide=*]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{verbatim}
+
+\geometry{margin=2.5cm}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\textbf{An\'alisis Comparativo de Algoritmos de B\'usqueda:\\ A* frente a Hill Climbing en un Problema de Navegaci\'on}}
+\author{Carlos Manuel Pi\~nero Ram\'irez \\ Facultad de Tecnolog\'ias Libres \\ Universidad de las Ciencias Inform\'aticas}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Se contrast\'o emp\'iricamente una b\'usqueda heur\'istica global (A*) frente a una b\'usqueda
+local (Steepest-Ascent Hill Climbing) sobre un plano discreto de $15\times15$ celdas con
+obst\'aculos, cargado desde \code{dataset\_coordenadas.csv}. A* result\'o \'optimo con un
+costo de $24.00$ usando la distancia eucl\'idea como heur\'istica admisible y consistente,
+expandiendo $152$ nodos. Hill Climbing alcanz\'o el mismo \'optimo expandiendo solo $59$
+nodos, pero su \'exito dependi\'o de la topolog\'ia: un barrido desde las $206$ celdas
+libres confirm\'o la ausencia de \'optimos locales en este tablero, mientras que un
+escenario adversario en forma de ``U'' lo dej\'o atrapado en un m\'aximo local. Se concluye
+que la b\'usqueda local es eficiente pero no confiable, y que A* paga su optimalidad con un
+mayor n\'umero de expansiones.
+\end{abstract}
+
+\section{Introducci\'on}
+\label{sec:intro}
+
+El problema de navegaci\'on en un espacio de estados consiste en hallar una secuencia de
+acciones que conduzca desde un estado inicial hasta un estado objetivo evitando regiones
+prohibidas. Este trabajo aborda dicho problema en un plano 2D discreto y compara dos
+familias de algoritmos con garant\'ias te\'oricas muy distintas.
+
+La \textbf{b\'usqueda heur\'istica global} A* \cite{russell2020} es un algoritmo de
+b\'usqueda informada que combina el costo real acumulado $g(n)$ con una estimaci\'on
+$h(n)$ del costo restante. Cuando $h(n)$ es \emph{admisible} (nunca sobreestima el costo
+real) A* es \textbf{\'optimo}, y cuando es \emph{consistente} es adem\'as eficiente en
+t\'erminos de reexpansiones. En cambio, la \textbf{b\'usqueda local} Hill Climbing
+\cite{russell2020} solo examina el vecindario inmediato del estado actual y avanza hacia
+el vecino con mejor evaluaci\'on. Es un m\'etodo voraz, de bajo costo por paso, pero
+carente de garant\'ias de completitud y optimalidad: puede quedar atrapado en
+\textbf{m\'aximos locales}, \textbf{mesetas} o \textbf{crestas}.
+
+El objetivo es comprender de forma emp\'irica c\'omo la topolog\'ia del espacio de
+b\'usqueda determina el desempe\~no de cada algoritmo, evidenciando los conceptos de
+completitud, optimalidad y \'optimos locales.
+
+\section{Metodolog\'ia}
+\label{sec:metodologia}
+
+\subsection{Definici\'on del espacio de estados}
+\label{sec:espacio}
+
+El espacio se construy\'o a partir del archivo \code{dataset\_coordenadas.csv}, que
+contiene $225$ registros con columnas \code{x}, \code{y} y \code{tipo}. Cada registro
+define una celda del plano con uno de cuatro tipos: \code{libre}, \code{inicio},
+\code{objetivo} u \code{obstaculo}. El espacio resultante es una cuadr\'icula de
+$15\times15$ celdas con $206$ celdas libres, $17$ obst\'aculos, el estado inicial en
+$(1,1)$ y el estado objetivo en $(13,13)$.
+
+Formalmente, el espacio de estados es la tupla
+\[
+M = (S,\, s_0,\, S_g,\, A,\, c),
+\]
+donde:
+\begin{itemize}
+    \item $S$ es el conjunto de celdas transitables (libres y objetivo);
+    \item $s_0 = (1,1)$ es el estado inicial y $S_g = \{(13,13)\}$ el estado objetivo;
+    \item $A = \{\textsc{Arriba}, \textsc{Abajo}, \textsc{Izquierda}, \textsc{Derecha}\}$
+          define 4-conectividad, es decir, sin movimientos diagonales;
+    \item $c(s,a,s') = d(s,s')$ es el costo de arista, igual a la distancia eucl\'idea
+          entre celdas consecutivas ($1.0$ para movimientos ortogonales).
+\end{itemize}
+
+La funci\'on de transici\'on $\text{resultado}(s,a)=s+\Delta(a)$ es v\'alida si el destino
+permanece dentro del tablero y no es un obst\'aculo. El espacio es finito, determinista,
+totalmente observable y est\'atico.
+
+\subsection{Dise\~no de la funci\'on heur\'istica}
+\label{sec:heuristica}
+
+Para A* se emple\'o la distancia eucl\'idea al objetivo:
+\begin{equation}
+\label{eq:heuristica}
+h(n) = \sqrt{(x_n - x_g)^2 + (y_n - y_g)^2},
+\end{equation}
+con $n=(x_n,y_n)$ y el objetivo $g=(x_g,y_g)$. Esta heur\'istica es
+\textbf{admisible}: en una cuadr\'icula con 4-conectividad cada paso cuesta al menos
+$1$, de modo que el costo real restante es al menos la distancia Manhattan, y como
+$h(n) \le d_{\text{Manhattan}}(n,g)$, se tiene $h(n) \le h^*(n)$ para todo $n$; nunca
+sobreestima. Es adem\'as \textbf{consistente}, pues para toda arista $(n,n')$ de costo
+$c(n,n')=1$,
+\begin{equation}
+\label{eq:consistencia}
+h(n) \le 1 + h(n') \quad\Longleftrightarrow\quad h(n)-h(n') \le d(n,n')=1,
+\end{equation}
+desigualdad que se cumple por la desigualdad triangular de la distancia eucl\'idea. La
+admisibilidad garantiza la \textbf{optimalidad} de A* y la consistencia evita
+reexpansiones.
+
+Para Hill Climbing se us\'o como funci\'on de evaluaci\'on el negativo de la misma
+heur\'istica,
+\begin{equation}
+\label{eq:evaluacion}
+f(n) = -\,h(n),
+\end{equation}
+de modo que maximizar $f(n)$ equivale a minimizar la distancia al objetivo. El algoritmo
+solo eval\'ua los vecinos inmediatos del estado actual (\emph{steepest ascent}).
+
+\subsection{Algoritmos implementados}
+\label{sec:algoritmos}
+
+A* se implement\'o con una cola de prioridad (\code{heapq}) ordenada por
+$f(n)=g(n)+h(n)$, con conjuntos de abiertos y cerrados y un diccionario de predecesores
+para reconstruir la ruta. Hill Climbing se implement\'o en su variante
+\emph{steepest ascent} y, para mitigar los \'optimos locales, se le a\~nadi\'o
+\textbf{reinicios aleatorios}: al estancarse, reinicia desde una celda libre aleatoria
+conservando la mejor trayectoria. Ambos fueron implementados desde cero, usando
+exclusivamente \code{numpy}, \code{pandas}, \code{matplotlib} y \code{heapq}. El
+c\'odigo completo se incluye en el Anexo~\ref{anexo:codigo} y en el notebook
+\code{T2Carlos\_Pi\~nero.ipynb}.
+
+\section{Resultados Experimentales}
+\label{sec:resultados}
+
+La Tabla~\ref{tab:metricas} resume las m\'etricas. A* se ejecut\'o una vez (es
+determinista); Hill Climbing se ejecut\'o $30$ veces con semillas distintas, por ser
+estoc\'astico. Ambos resolvieron el problema con el mismo costo \'optimo de $24.00$
+($25$ nodos), pero con un n\'umero de expansiones muy diferente.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparaci\'on de m\'etricas de desempe\~no sobre el mismo dataset.}
+\label{tab:metricas}
+\small
+\begin{tabular}{lcc}
+\hline
+\textbf{M\'etrica} & \textbf{A*} & \textbf{Hill Climbing} \\
+\hline
+¿Lleg\'o al objetivo?            & S\'i        & S\'i ($100\%$ de $30$ corridas) \\
+Longitud del camino (nodos)      & 25          & $25.0 \pm 0.0$ \\
+Costo total (distancia eucl\'idea) & 24.00     & $24.00 \pm 0.00$ \\
+Nodos expandidos                 & 152         & $59.0 \pm 0.0$ \\
+Tiempo de ejecuci\'on (s)        & 0.001713    & 0.000575 \\
+Reinicios aleatorios             & ---         & 0.0 \\
+\hline
+\end{tabular}
+\end{table}
+
+La Figura~\ref{fig:espacio} muestra el espacio de estados con los obst\'aculos y los
+puntos de inicio y objetivo. La Figura~\ref{fig:astar} presenta la ruta \'optima de A*
+junto con el orden de expansi\'on de los nodos. La Figura~\ref{fig:comparacion} compara
+la ruta de A* con la mejor ruta hallada por Hill Climbing: n\'otese que, aunque son
+distintas, ambas tienen costo $24.00$.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.60\textwidth]{mapa_espacio_estados.png}
+\caption{Espacio de estados cargado desde \code{dataset\_coordenadas.csv}.}
+\label{fig:espacio}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.98\textwidth]{ruta_a_estrella.png}
+\caption{A*: ruta \'optima (izquierda) y orden de expansi\'on de los $152$ nodos (derecha).}
+\label{fig:astar}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.74\textwidth]{comparacion_rutas.png}
+\caption{Superposici\'on de la ruta de A* y la mejor ruta de Hill Climbing.}
+\label{fig:comparacion}
+\end{figure}
+
+La Figura~\ref{fig:analisis} analiza el costo computacional y la naturaleza estoc\'astica
+de la b\'usqueda local. La Figura~\ref{fig:trampa} presenta el escenario adversario
+descrito en la Secci\'on~\ref{sec:discusion}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{analisis_optimos_locales.png}
+\caption{Nodos expandidos, costo del camino y reinicios aleatorios de Hill Climbing.}
+\label{fig:analisis}
+\end{figure}
+
+\section{An\'alisis y Discusi\'on}
+\label{sec:discusion}
+
+\subsection{\'Optimos locales, mesetas y la topolog\'ia del espacio}
+
+Contrario a la intuici\'on inicial, en \emph{este} dataset Hill Climbing no fall\'o:
+alcanz\'o el \'optimo global en las $30$ corridas y expandi\'o menos nodos que A*
+($59$ frente a $152$). Para explicarlo es necesario analizar la topolog\'ia. El estado
+objetivo se encuentra en la esquina inferior derecha, $(13,13)$, y el muro de
+obst\'aculos situado en $x=5$ es \textbf{convexo respecto al objetivo}: en todo el
+espacio transitable, moverse hacia abajo o hacia la derecha no aleja al agente de la
+meta, y los obst\'aculos \emph{nunca} lo obligan a retroceder. En consecuencia, la
+funci\'on de evaluaci\'on $f(n)=-h(n)$ decrece de forma mon\'otona y la trayectoria
+voraz coincide con una ruta \'optima.
+
+Para verificar que esto es una propiedad del tablero y no una casualidad, se ejecut\'o
+Hill Climbing voraz \textbf{sin reinicios desde las $206$ celdas libres}: en el
+$100\%$ de los casos se alcanz\'o el objetivo. Es decir, el paisaje de evaluaci\'on de
+este problema \textbf{no posee m\'aximos locales, mesetas ni crestas} relevantes. Este
+resultado refuerza una idea central: el desempe\~no de la b\'usqueda local depende por
+completo de la forma del espacio, no de una propiedad intr\'inseca del algoritmo.
+
+Para evidenciar la debilidad estructural de Hill Climbing se dise\~n\'o un
+\textbf{escenario adversario controlado} (Figura~\ref{fig:trampa}): una concavidad en
+forma de ``U'' que abre en direcci\'on \emph{opuesta} al objetivo. La evaluaci\'on
+$f(n)=-h(n)$ conduce al agente hacia el fondo de la ``U'', donde todos los vecinos
+empeoran; Hill Climbing se detiene tras solo dos pasos en el estado $(5,8)$, a una
+distancia de $7.00$ de la meta: un \textbf{m\'aximo local}. A* bordea el obst\'aculo y
+encuentra la soluci\'on con costo $14.00$. La regi\'on plana del fondo de la ``U''
+corresponde adem\'as a una \textbf{meseta}: varios estados comparten el mismo valor de
+evaluaci\'on, lo que en ausencia de movimientos laterales provoca el estancamiento.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.68\textwidth]{escenario_trampa.png}
+\caption{Escenario adversario en ``U'': HC queda atrapado en un \'optimo local mientras A* bordea el obst\'aculo.}
+\label{fig:trampa}
+\end{figure}
+
+\subsection{Optimalidad y costo computacional de A*}
+
+A* garantiz\'o la optimalidad \emph{por construcci\'on}: la heur\'istica de
+la Ecuaci\'on~\eqref{eq:heuristica} es admisible (Ecuaci\'on~\eqref{eq:consistencia}),
+por lo que A* expande el objetivo solo cuando su costo $g$ es \'optimo. Esta garant\'ia
+es independiente de la topolog\'ia del tablero: incluso en el escenario adversario,
+donde Hill Climbing fracasa, A* hall\'o la ruta \'optima.
+
+El precio de la garant\'ia es computacional. A* expandi\'o $152$ nodos frente a los $59$
+de Hill Climbing, un factor de aproximadamente $2.6\times$. La diferencia se debe a que
+A* mantiene una \textbf{frontera} (cola de prioridad) que puede crecer de forma
+exponencial, mientras que Hill Climbing solo conserva el estado actual y su vecindario.
+En t\'erminos de complejidad, A* es $O(b^d)$ en tiempo y espacio en el peor caso, frente
+al car\'acter de paso constante de la b\'usqueda local. Asimismo, A* requiere que
+$h(n)$ sea admisible; una heur\'istica mal dise\~nada destruir\'ia la optimalidad.
+
+Cabe se\~nalar que en este tablero la heur\'istica eucl\'idea es poco discriminante
+(hay muchos empates de distancia), lo que obliga a A* a expandir m\'as nodos de los que
+expandir\'ia una heur\'istica m\'as informada. Esto explica por qu\'e, aun siendo
+\'optimo, A* result\'o m\'as ``costoso'' que la b\'usqueda local en este caso concreto.
+
+\subsection{\'Cuando preferir b\'usqueda local sobre A*}
+
+Hill Climbing resulta preferible cuando el espacio es enorme, la funci\'on de evaluaci\'on
+es suave (sin \'optimos locales significativos) y basta una soluci\'on
+\emph{suficientemente buena}. Ejemplos t\'ipicos incluyen la optimizaci\'on de
+par\'ametros continuos, el ajuste de hiperpar\'ametros, la asignaci\'on de recursos en
+tiempo real y la planificaci\'on con presupuestos de c\'omputo estrictos. En cambio, A*
+se justifica cuando la \textbf{optimalidad} o la \textbf{completitud} son requisitos
+cr\'iticos: navegaci\'on de robots, planificaci\'on de rutas, videojuegos con garant\'ias
+de camino m\'inimo y, en general, cualquier escenario donde fallar o encontrar una ruta
+sub\'optima tenga consecuencias.
+
+\section{Conclusiones}
+\label{sec:conclusiones}
+
+La comparaci\'on emp\'irica permiti\'o constatar que A* es \'optimo y completo gracias a
+la admisibilidad y consistencia de la distancia eucl\'idea, a costa de expandir m\'as
+nodos y mantener una frontera en memoria. Hill Climbing, en cambio, result\'o
+sorprendentemente eficiente en este tablero (mismo costo \'optimo con menos de la mitad
+de expansiones), pero esa eficiencia dependi\'o de una topolog\'ia benigna: el barrido
+desde las $206$ celdas libres confirm\'o la ausencia de \'optimos locales. El escenario
+adversario en ``U'' demostr\'o la fragilidad estructural del m\'etodo, que qued\'o
+atrapado en un m\'aximo local donde A* triunf\'o sin dificultad.
+
+La lecci\'on principal es que la idoneidad de un algoritmo de b\'usqueda no puede
+juzgarse en aislamiento, sino en funci\'on de la \textbf{topolog\'ia del espacio} y de
+los \textbf{requisitos de garant\'ia}: A* cuando la optimalidad es obligatoria; b\'usqueda
+local cuando la eficiencia prima y el paisaje de evaluaci\'on es favorable. Los reinicios
+aleatorios mejoran la robustez de Hill Climbing pero incrementan el n\'umero de
+evaluaciones y no restauran ninguna garant\'ia te\'orica.
+
+\begin{thebibliography}{9}
+\bibitem{russell2020} Stuart J. Russell and Peter Norvig.
+\textit{Artificial Intelligence: A Modern Approach}. 4th Edition. Pearson, 2020.
+\bibitem{hart1968} P. E. Hart, N. J. Nilsson, and B. Raphael.
+\textit{A Formal Basis for the Heuristic Determination of Minimum Cost Paths}.
+IEEE Transactions on Systems Science and Cybernetics, 4(2):100--107, 1968.
+\end{thebibliography}
+
+\appendix
+\section{C\'odigo principal}
+\label{anexo:codigo}
+
+\begin{verbatim}
+def distancia_euclidiana(a, b):
+    return float(np.hypot(a[0] - b[0], a[1] - b[1]))
+
+MOVIMIENTOS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+def obtener_vecinos(nodo, datos):
+    vecinos = []
+    for dx, dy in MOVIMIENTOS:
+        candidato = (nodo[0] + dx, nodo[1] + dy)
+        if candidato in datos["libres"] or candidato == datos["objetivo"]:
+            vecinos.append(candidato)
+    return vecinos
+
+def costo_camino(camino):
+    return sum(distancia_euclidiana(camino[i], camino[i + 1])
+               for i in range(len(camino) - 1))
+\end{verbatim}
+
+\begin{verbatim}
+def a_estrella(datos):
+    inicio, objetivo = datos["inicio"], datos["objetivo"]
+    contador = itertools.count()
+    abiertos = [(distancia_euclidiana(inicio, objetivo), next(contador), inicio)]
+    g, padres, cerrados = {inicio: 0.0}, {inicio: None}, set()
+    while abiertos:
+        _, _, actual = heapq.heappop(abiertos)
+        if actual in cerrados:
+            continue
+        cerrados.add(actual)
+        if actual == objetivo:
+            break
+        for vecino in obtener_vecinos(actual, datos):
+            if vecino in cerrados:
+                continue
+            nuevo_g = g[actual] + distancia_euclidiana(actual, vecino)
+            if vecino not in g or nuevo_g < g[vecino]:
+                g[vecino] = nuevo_g
+                padres[vecino] = actual
+                f = nuevo_g + distancia_euclidiana(vecino, objetivo)
+                heapq.heappush(abiertos, (f, next(contador), vecino))
+    # ... reconstruccion del camino mediante 'padres' ...
+\end{verbatim}
+
+\begin{verbatim}
+def hill_climbing(datos, max_reinicios=50, max_iter=500, semilla=0):
+    rng = random.Random(semilla)
+    inicio, objetivo = datos["inicio"], datos["objetivo"]
+    libres = list(datos["libres"])
+    for reintento in range(max_reinicios):
+        actual = inicio if reintento == 0 else rng.choice(libres)
+        visitados = {actual}
+        for _ in range(max_iter):
+            if actual == objetivo:
+                return True, visitados
+            vecinos = [v for v in obtener_vecinos(actual, datos)
+                       if v not in visitados]
+            if not vecinos:
+                break
+            siguiente = min(vecinos,
+                            key=lambda v: distancia_euclidiana(v, objetivo))
+            if distancia_euclidiana(siguiente, objetivo) < \
+                    distancia_euclidiana(actual, objetivo):
+                actual = siguiente
+                visitados.add(actual)
+            else:
+                break  # optimo local / meseta
+    return False, visitados
+\end{verbatim}
+
+\end{document}

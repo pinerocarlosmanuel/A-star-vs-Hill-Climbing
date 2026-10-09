@@ -1,0 +1,90 @@
+\documentclass[12px,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% Configuración para listados de código Python
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    language=Python
+}
+\lstset{style=mystyle}
+
+\title{\textbf{Análisis Comparativo de Algoritmos de Búsqueda: A* vs Hill Climbing}}
+\author{Nombre del Estudiante \\ Ingeniería en Ciencias Informáticas \\ Universidad de las Ciencias Informáticas}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Breve resumen del informe (máximo 150 palabras) indicando el problema abordado, los algoritmos comparados y la conclusión principal.
+\end{abstract}
+
+\section{Introducción}
+Contextualice brevemente el problema de navegación en espacios de estados. Introduzca los algoritmos A* y Hill Climbing, mencionando sus características teóricas (global vs. local, uso de heurísticas).
+
+\section{Metodología}
+\subsection{Definición del Espacio de Estados}
+Describa cómo se modeló el problema a partir del dataset de coordenadas.
+\subsection{Diseño de la Función Heurística}
+Explique la función $h(n)$ utilizada y justifique por qué es \textbf{admisible} para el caso de A*.
+
+\section{Resultados Experimentales}
+Presente las métricas obtenidas en una tabla comparativa. 
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Métrica} & \textbf{A*} & \textbf{Hill Climbing} \\ \hline
+¿Llegó al objetivo? &  &  \\ \hline
+Nodos expandidos &  &  \\ \hline
+Longitud del camino &  &  \\ \hline
+Tiempo (seg) &  &  \\ \hline
+\end{tabular}
+\caption{Comparación de métricas de desempeño.}
+\end{table}
+
+Incluya aquí las gráficas generadas con \texttt{matplotlib} mostrando las rutas trazadas por ambos algoritmos.
+
+\section{Análisis y Discusión}
+\textbf{Esta es la sección más importante.} Responda críticamente:
+\begin{itemize}
+    \item ¿Por qué Hill Climbing falló (o tuvo un desempeño inferior) en este escenario específico? Relacione su respuesta con los conceptos de \textit{máximos locales}, \textit{mesetas} o \textit{cresta}.
+    \item ¿Cómo garantizó A* la optimalidad del camino? ¿Qué costo computacional pagó por ello?
+    \item ¿En qué escenario real usted preferiría usar Hill Climbing sobre A* a pesar de sus limitaciones?
+\end{itemize}
+
+\section{Conclusiones}
+Síntesis de los aprendizajes obtenidos sobre la idoneidad de cada método según la naturaleza del problema.
+
+\begin{thebibliography}{9}
+\bibitem{russell2020} Stuart J. Russell and Peter Norvig. \textit{Artificial Intelligence: A Modern Approach}. 4th Edition. Pearson, 2020.
+\end{thebibliography}
+
+\end{document}

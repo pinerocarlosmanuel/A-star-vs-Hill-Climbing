@@ -1,0 +1,11 @@
+# Dependencias de ejecución — Análisis Comparativo de Algoritmos de Búsqueda
+# A* frente a Hill Climbing en un Problema de Navegación
+#
+# Requiere Python >= 3.12
+# Nota: heapq, itertools, random, time y warnings pertenecen a la
+# biblioteca estándar de Python y no se listan aquí.
+
+numpy>=1.26
+pandas>=2.1
+matplotlib>=3.8
+jupyterlab>=4.0
